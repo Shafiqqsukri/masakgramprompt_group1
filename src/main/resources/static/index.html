@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MasakGramPrompt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F2EEE3; --paper-alt:#E9E3D3; --ink:#1A1A1A; --ink-soft:#5B5648;
+    --turmeric:#C9820A; --herb:#3D6B4F; --chili:#B23A2E; --rule:#1A1A1A;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--paper);color:var(--ink);font-family:'Inter',sans-serif;padding:28px 20px 60px;}
+  .wrap{max-width:1180px;margin:0 auto;}
+
+  .brand{display:flex;align-items:baseline;justify-content:space-between;border-bottom:6px solid var(--rule);padding-bottom:14px;margin-bottom:22px;}
+  .brand h1{font-family:'Archivo Black',sans-serif;font-size:30px;letter-spacing:.5px;text-transform:uppercase;}
+  .brand .tag{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-soft);margin-top:6px;}
+  .conn{display:flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.08em;}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--herb);}
+  .dot.off{background:var(--chili);}
+
+  .tabs{display:flex;gap:2px;margin-bottom:22px;}
+  .tab{font-family:'IBM Plex Mono',monospace;font-size:12px;text-transform:uppercase;letter-spacing:.06em;
+    padding:10px 20px;background:var(--paper-alt);border:2px solid var(--rule);border-bottom:none;cursor:pointer;color:var(--ink-soft);}
+  .tab.active{background:var(--ink);color:var(--paper);}
+  .tabpage{display:none;} .tabpage.active{display:block;}
+
+  .msg{font-family:'IBM Plex Mono',monospace;font-size:13px;padding:10px 14px;border-left:4px solid var(--ink);background:var(--paper-alt);margin-bottom:20px;display:none;}
+  .msg.show{display:block;} .msg.err{border-color:var(--chili);color:var(--chili);} .msg.ok{border-color:var(--herb);color:var(--herb);}
+
+  .panel{background:var(--paper-alt);border:2px solid var(--rule);padding:24px 26px;margin-bottom:26px;}
+  .panel h2{font-family:'Archivo Black',sans-serif;font-size:16px;text-transform:uppercase;letter-spacing:.03em;margin-bottom:18px;padding-bottom:10px;border-bottom:3px solid var(--rule);}
+  .panel h2 small{font-weight:400;font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:none;color:var(--ink-soft);}
+
+  .cfg-row{display:flex;gap:40px;flex-wrap:wrap;margin-bottom:20px;}
+  .cfg-col{flex:1;min-width:230px;}
+  .cfg-col h3{font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);margin-bottom:10px;}
+  .opt{display:flex;align-items:center;padding:6px 0;border-bottom:1px solid #d9d2bd;font-size:14px;}
+  .opt input{margin-right:10px;accent-color:var(--turmeric);}
+
+  button.run{font-family:'Archivo Black',sans-serif;font-size:13px;letter-spacing:.04em;text-transform:uppercase;background:var(--turmeric);color:#fff;border:2px solid var(--rule);padding:13px 30px;cursor:pointer;}
+  button.run:hover{background:#af7009;} button.run:disabled{background:#c9c2ad;color:#8a8371;cursor:not-allowed;}
+  button.ghost{font-family:'IBM Plex Mono',monospace;font-size:12px;background:none;border:1px solid var(--ink);padding:11px 18px;cursor:pointer;margin-left:10px;color:var(--ink);}
+  button.ghost:hover{background:var(--ink);color:var(--paper);}
+
+  .stat-row{display:flex;border-top:4px solid var(--rule);border-bottom:2px solid var(--rule);margin:16px 0;}
+  .stat-cell{flex:1;padding:10px 14px;border-right:1px solid #cfc7ae;}
+  .stat-cell:last-child{border-right:none;}
+  .stat-cell .l{font-size:11px;color:var(--ink-soft);text-transform:uppercase;}
+  .stat-cell .v{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700;}
+
+  .bar{height:22px;background:#ddd6c2;border:1px solid var(--rule);margin-top:6px;}
+  .bar-fill{height:100%;background:var(--turmeric);transition:width .4s ease;}
+
+  .grid-wrap{max-height:520px;overflow:auto;border:2px solid var(--rule);}
+  table.grid{border-collapse:collapse;width:100%;font-family:'IBM Plex Mono',monospace;font-size:11.5px;}
+  table.grid th{background:var(--ink);color:var(--paper);position:sticky;top:0;padding:8px 10px;text-align:center;font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:10.5px;z-index:2;}
+  table.grid td{padding:6px 10px;text-align:center;border-bottom:1px solid #ded7c3;white-space:nowrap;}
+  table.grid td.tcol{text-align:left;font-weight:600;background:var(--paper-alt);position:sticky;left:0;border-right:2px solid var(--rule);z-index:1;}
+  .c-pending{color:#a49c85;} .c-running{color:var(--turmeric);font-weight:700;}
+  .c-completed{color:var(--herb);font-weight:700;cursor:pointer;text-decoration:underline dotted;}
+  .c-failed{color:var(--chili);font-weight:700;cursor:help;}
+  .c-not_run{color:#c9c2ad;}
+
+  .export-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;}
+  .export-btn{font-family:'IBM Plex Mono',monospace;font-size:11.5px;text-align:left;background:var(--paper);border:1px solid var(--ink);padding:10px 12px;cursor:pointer;color:var(--ink);}
+  .export-btn:hover{background:var(--ink);color:var(--paper);}
+  .export-btn .num{color:var(--turmeric);font-weight:700;margin-right:6px;}
+
+  table.reel-table{width:100%;border-collapse:collapse;font-size:13px;}
+  table.reel-table th{background:var(--ink);color:var(--paper);padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;}
+  table.reel-table td{padding:8px 10px;border-bottom:1px solid #d9d2bd;}
+  table.reel-table tr:hover{background:#e3ddc9;}
+  .badge{font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:2px 7px;border:1px solid currentColor;text-transform:uppercase;}
+  .badge.yes{color:var(--herb);} .badge.no{color:var(--chili);}
+  .view-link{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--turmeric);cursor:pointer;text-decoration:underline;}
+
+  .overlay{position:fixed;inset:0;background:rgba(26,26,26,.65);display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto;z-index:50;}
+  .overlay.show{display:flex;}
+  .label-card{background:#fff;border:3px solid var(--ink);max-width:640px;width:100%;padding:0;position:relative;}
+  .wide-card{max-width:900px;}
+  .label-head{padding:14px 18px 6px;border-bottom:10px solid var(--ink);}
+  .label-head .kicker{font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);}
+  .label-head h2{font-family:'Archivo Black',sans-serif;font-size:26px;margin:2px 0 8px;}
+  .label-head .meta{font-size:12.5px;color:var(--ink-soft);margin-bottom:6px;}
+  .label-body{padding:10px 18px 18px;}
+  .amt-row{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:5px solid var(--ink);}
+  .amt-row .big{font-family:'Archivo Black',sans-serif;font-size:34px;}
+  .nutrient{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #ccc;font-size:13.5px;}
+  .nutrient.indent{padding-left:16px;font-size:12.5px;color:var(--ink-soft);}
+  .nutrient b{font-family:'IBM Plex Mono',monospace;}
+  .compare-title{font-family:'Archivo Black',sans-serif;font-size:13px;text-transform:uppercase;margin:20px 0 10px;padding-top:14px;border-top:3px solid var(--ink);}
+  table.compare{width:100%;border-collapse:collapse;font-size:12px;}
+  table.compare th{background:var(--paper-alt);padding:6px 8px;text-align:left;border-bottom:2px solid var(--ink);}
+  table.compare td{padding:6px 8px;border-bottom:1px solid #e2ddcf;vertical-align:top;}
+  .hallu{color:var(--chili);font-weight:700;font-size:10.5px;}
+  .close-btn{position:absolute;top:10px;right:14px;font-family:'IBM Plex Mono',monospace;font-size:20px;background:none;border:none;cursor:pointer;color:var(--ink);}
+  .empty-note{font-size:12px;color:var(--ink-soft);font-style:italic;padding:8px 0;}
+  .btn-row{display:flex;gap:10px;padding:0 18px 16px;}
+  .transcript-preview{font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.6;background:var(--paper);border:1px solid var(--ink);padding:14px;max-height:220px;overflow:auto;white-space:pre-wrap;}
+  .my-word{color:var(--turmeric);font-weight:700;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand">
+    <div>
+      <h1>MasakGramPrompt</h1>
+      <div class="tag">Nutritional analytics from code-switched gastronomy reels</div>
+    </div>
+    <div class="conn"><span class="dot" id="dot"></span><span id="dot-label">connected</span></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="run" onclick="switchTab('run')">Run Experiments</div>
+    <div class="tab" data-tab="reels" onclick="switchTab('reels')">Reel Analysis</div>
+    <div class="tab" data-tab="export" onclick="switchTab('export')">Data Export</div>
+  </div>
+
+  <div id="msg" class="msg"></div>
+
+  <!-- ===== TAB: RUN EXPERIMENTS ===== -->
+  <div class="tabpage active" id="tab-run">
+    <div class="panel">
+      <h2>Experiment Configuration</h2>
+      <div class="cfg-row">
+        <div class="cfg-col">
+          <h3>LLM Model — choose one</h3>
+          <div id="model-list"><p class="empty-note">Loading models…</p></div>
+        </div>
+        <div class="cfg-col">
+          <h3>Prompt Technique(s) — choose one or more</h3>
+          <div id="tech-list"><p class="empty-note">Loading techniques…</p></div>
+        </div>
+      </div>
+      <button class="run" id="run-btn" onclick="runBatch()">Run 50 transcripts</button>
+      <button class="ghost" onclick="loadReferenceData()">Refresh</button>
+    </div>
+
+    <div class="panel" id="progress-panel" style="display:none;">
+      <h2>Live Execution Status</h2>
+      <div class="stat-row">
+        <div class="stat-cell"><div class="l">Completed</div><div class="v" id="s-completed">0</div></div>
+        <div class="stat-cell"><div class="l">Failed</div><div class="v" style="color:var(--chili);" id="s-failed">0</div></div>
+        <div class="stat-cell"><div class="l">Total</div><div class="v" id="s-total">0</div></div>
+        <div class="stat-cell"><div class="l">Elapsed</div><div class="v" id="s-elapsed">00:00:00</div></div>
+      </div>
+      <div class="bar"><div class="bar-fill" id="bar-fill" style="width:0%"></div></div>
+    </div>
+
+    <div class="panel" id="grid-panel" style="display:none;">
+      <h2>Status Grid <small>click a completed cell for its fact sheet</small></h2>
+      <div class="grid-wrap"><table class="grid" id="status-grid"></table></div>
+    </div>
+  </div>
+
+  <!-- ===== TAB: REEL ANALYSIS ===== -->
+  <div class="tabpage" id="tab-reels">
+    <div class="panel">
+      <h2>Reel Analysis Dashboard <small id="reel-count"></small></h2>
+      <div class="grid-wrap" style="max-height:600px;">
+        <table class="reel-table" id="reel-table">
+          <thead><tr>
+            <th>Reel</th><th>Influencer</th><th>Duration</th><th>Language</th>
+            <th>Transcript Status</th><th>Ground Truth</th><th></th>
+          </tr></thead>
+          <tbody id="reel-tbody"><tr><td colspan="7" class="empty-note">Loading reels…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB: DATA EXPORT ===== -->
+  <div class="tabpage" id="tab-export">
+    <div class="panel">
+      <h2>Data Export — 10 evaluation layers</h2>
+      <div class="export-grid">
+        <button class="export-btn" onclick="exportLayer('layer1a_exact_match')"><span class="num">1A</span>Exact match</button>
+        <button class="export-btn" onclick="exportLayer('layer1b_text_similarity')"><span class="num">1B</span>Text similarity</button>
+        <button class="export-btn" onclick="exportLayer('layer2a_numeric_quantity')"><span class="num">2A</span>Numeric quantity</button>
+        <button class="export-btn" onclick="exportLayer('layer2b_numeric_nutrition')"><span class="num">2B</span>Numeric nutrition</button>
+        <button class="export-btn" onclick="exportLayer('layer2c_nutrition_totals')"><span class="num">2C</span>Nutrition totals</button>
+        <button class="export-btn" onclick="exportLayer('layer3a_json_validity')"><span class="num">3A</span>JSON validity</button>
+        <button class="export-btn" onclick="exportLayer('layer3b_hallucination')"><span class="num">3B</span>Hallucination</button>
+        <button class="export-btn" onclick="exportLayer('layer3c_ingredient_detection')"><span class="num">3C</span>Ingredient detection</button>
+        <button class="export-btn" onclick="exportLayer('layer4_human_evaluation')"><span class="num">4</span>Human evaluation</button>
+        <button class="export-btn" onclick="exportLayer('layer5_condition_scores')"><span class="num">5</span>Condition scores</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Fact Sheet Modal -->
+<div class="overlay" id="overlay" onclick="if(event.target===this)closeOverlay()">
+  <div class="label-card" id="sheet-content"></div>
+</div>
+
+<!-- Reel Detail Modal -->
+<div class="overlay" id="overlay-reel" onclick="if(event.target===this)closeReelOverlay()">
+  <div class="label-card wide-card" id="reel-detail-content"></div>
+</div>
+
+<script>
+const API = '/api';
+let pollTimer = null;
+
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
+  document.querySelectorAll('.tabpage').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name==='reels') loadReels();
+}
+
+async function loadReferenceData(){
+  try{
+    const [models, techniques] = await Promise.all([
+      fetch(API+'/models').then(r=>r.json()),
+      fetch(API+'/techniques').then(r=>r.json())
+    ]);
+    setConn(true);
+    document.getElementById('model-list').innerHTML = models.map((m,i)=>`
+      <div class="opt"><input type="radio" name="model" id="m${i}" value="${m.modelName}" ${i===0?'checked':''}><label for="m${i}">${m.modelName}</label></div>`).join('');
+    document.getElementById('tech-list').innerHTML = techniques.map((t,i)=>`
+      <div class="opt"><input type="checkbox" id="t${i}" value="${t.techniqueName}" checked><label for="t${i}">${t.techniqueName}</label></div>`).join('');
+    showMsg('Connected. Ready to run experiments.', 'ok');
+  }catch(err){
+    setConn(false);
+    showMsg('Cannot reach the server API — is DashboardHttpBridge running?', 'err');
+  }
+}
+
+function setConn(ok){
+  document.getElementById('dot').className = 'dot' + (ok ? '' : ' off');
+  document.getElementById('dot-label').textContent = ok ? 'connected' : 'disconnected';
+}
+function showMsg(text, type){
+  const m = document.getElementById('msg');
+  m.textContent = text; m.className = 'msg show ' + type;
+  setTimeout(()=>{ m.className='msg'; }, 6000);
+}
+function fmtTime(sec){
+  const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=Math.floor(sec%60);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+async function runBatch(){
+  const modelName = document.querySelector('input[name="model"]:checked')?.value;
+  const techniques = Array.from(document.querySelectorAll('#tech-list input:checked')).map(el=>el.value);
+  if(!modelName){ showMsg('Select a model first.', 'err'); return; }
+  if(techniques.length===0){ showMsg('Select at least one technique.', 'err'); return; }
+
+  try{
+    const resp = await fetch(API+'/run-batch', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({modelName, techniques})});
+    const data = await resp.json();
+    if(resp.status !== 202){ showMsg(data.error || 'Failed to start batch', 'err'); return; }
+    showMsg(`Started: ${modelName} × [${techniques.join(', ')}] — ${data.total} experiments across 50 transcripts.`, 'ok');
+    document.getElementById('run-btn').disabled = true;
+    document.getElementById('progress-panel').style.display = 'block';
+    document.getElementById('grid-panel').style.display = 'block';
+    buildEmptyGrid(techniques);
+    startPolling();
+  }catch(err){ showMsg('Error starting batch: '+err.message, 'err'); }
+}
+
+function buildEmptyGrid(techniques){
+  const table = document.getElementById('status-grid');
+  let html = '<thead><tr><th class="tcol" style="text-align:left;">Transcript</th>';
+  techniques.forEach(t=> html += `<th>${t}</th>`);
+  html += '</tr></thead><tbody>';
+  for(let t=1;t<=50;t++){
+    html += `<tr><td class="tcol">T${t}</td>`;
+    techniques.forEach(tech=> html += `<td id="cell-${t}-${tech}" class="c-pending">—</td>`);
+    html += '</tr>';
+  }
+  html += '</tbody>'; table.innerHTML = html;
+}
+
+function startPolling(){
+  if(pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(pollStatus, 1500);
+  pollStatus();
+}
+
+async function pollStatus(){
+  try{
+    const resp = await fetch(API+'/run-batch');
+    const data = await resp.json();
+    document.getElementById('s-completed').textContent = data.completed;
+    document.getElementById('s-failed').textContent = data.failed;
+    document.getElementById('s-total').textContent = data.total;
+    const progress = data.total>0 ? Math.floor(((data.completed+data.failed)/data.total)*100) : 0;
+    document.getElementById('bar-fill').style.width = progress+'%';
+    const elapsed = data.startTime ? Math.floor((Date.now()-data.startTime)/1000) : 0;
+    document.getElementById('s-elapsed').textContent = fmtTime(elapsed);
+
+    (data.statuses||[]).forEach(s=>{
+      const cell = document.getElementById(`cell-${s.transcriptId}-${s.technique}`);
+      if(!cell) return;
+      cell.className = 'c-'+s.status;
+      if(s.status==='completed'){ cell.textContent='done'; cell.onclick=()=>openSheet(s.experimentId); cell.title=(s.recipeName||'')+' — click for fact sheet'; }
+      else if(s.status==='failed'){ cell.textContent='fail'; cell.title=s.message||''; }
+      else if(s.status==='running'){ cell.textContent='run'; }
+    });
+
+    if(!data.running && (data.completed+data.failed)>=data.total && data.total>0){
+      clearInterval(pollTimer); pollTimer=null;
+      document.getElementById('run-btn').disabled=false;
+      showMsg(`Batch complete — ${data.completed} succeeded, ${data.failed} failed.`, 'ok');
+    }
+  }catch(err){}
+}
+
+function exportLayer(layer){ window.location.href = `${API}/export?layer=${layer}`; }
+
+// ===== Fact Sheet =====
+async function openSheet(experimentId){
+  try{
+    const resp = await fetch(`${API}/fact-sheet?experimentId=${experimentId}`);
+    if(!resp.ok){ showMsg('Fact sheet not available for this experiment.', 'err'); return; }
+    const s = await resp.json();
+    renderSheet(s);
+    document.getElementById('overlay').className = 'overlay show';
+  }catch(err){ showMsg('Error loading fact sheet: '+err.message, 'err'); }
+}
+function closeOverlay(){ document.getElementById('overlay').className = 'overlay'; }
+function n(v){ return (v===undefined||v===null) ? '—' : (Math.round(v*10)/10); }
+
+function renderSheet(s){
+  const t = s.total || {}; const ps = s.perServing || {};
+  let ingredientRows = '';
+  const maxLen = Math.max((s.groundTruthIngredients||[]).length, (s.predictedIngredients||[]).length);
+  for(let i=0;i<maxLen;i++){
+    const gt = (s.groundTruthIngredients||[])[i];
+    const pr = (s.predictedIngredients||[])[i];
+    ingredientRows += `<tr>
+      <td>${gt ? (gt.nameEn||gt.nameOriginal||'')+ (gt.quantityExpression? ' — '+gt.quantityExpression:'') : ''}</td>
+      <td>${pr ? (pr.nameEn||pr.nameOriginal||'') + ' — '+n(pr.quantityValue)+(pr.unitOriginal?(' '+pr.unitOriginal):'') + (pr.isHallucinated ? ' <span class="hallu">HALLUCINATION</span>' : '') : ''}</td>
+    </tr>`;
+  }
+  if(maxLen===0) ingredientRows = `<tr><td colspan="2" class="empty-note">No ingredient data available.</td></tr>`;
+
+  document.getElementById('sheet-content').innerHTML = `
+    <button class="close-btn" onclick="closeOverlay()">×</button>
+    <div class="label-head">
+      <div class="kicker">Nutritional Fact Sheet — Experiment #${s.experimentId}</div>
+      <h2>${s.recipeName || 'Unknown Recipe'}</h2>
+      <div class="meta">${s.modelName} · ${s.techniqueName} · ${s.servingsEstimated} servings · JSON ${s.jsonValid ? 'valid' : 'invalid'}</div>
+    </div>
+    <div class="label-body">
+      <div class="amt-row"><span>Amount per serving — Calories</span><span class="big">${n(ps.calories)}</span></div>
+      <div class="nutrient"><span>Total Fat</span><b>${n(ps.total_fat_g)} g</b></div>
+      <div class="nutrient indent"><span>Saturated Fat</span><b>${n(ps.saturated_fat_g)} g</b></div>
+      <div class="nutrient"><span>Cholesterol</span><b>${n(ps.cholesterol_mg)} mg</b></div>
+      <div class="nutrient"><span>Sodium</span><b>${n(ps.sodium_mg)} mg</b></div>
+      <div class="nutrient"><span>Total Carbohydrate</span><b>${n(ps.total_carbohydrate_g)} g</b></div>
+      <div class="nutrient indent"><span>Dietary Fiber</span><b>${n(ps.dietary_fiber_g)} g</b></div>
+      <div class="nutrient indent"><span>Total Sugars</span><b>${n(ps.total_sugars_g)} g</b></div>
+      <div class="nutrient"><span>Protein</span><b>${n(ps.protein_g)} g</b></div>
+      <div class="nutrient"><span>Vitamin D / Calcium / Iron / Potassium</span><b>${n(ps.vitamin_d_mcg)}mcg · ${n(ps.calcium_mg)}mg · ${n(ps.iron_mg)}mg · ${n(ps.potassium_mg)}mg</b></div>
+
+      <div class="compare-title">Recipe Totals (Predicted)</div>
+      <div class="nutrient"><span>Total Calories</span><b>${n(t.calories)} kcal</b></div>
+      <div class="nutrient"><span>Total Protein / Fat / Carbs</span><b>${n(t.protein_g)}g / ${n(t.total_fat_g)}g / ${n(t.total_carbohydrate_g)}g</b></div>
+
+      <div class="compare-title">Ingredients — Ground Truth vs LLM Extracted</div>
+      ${s.hasGroundTruth ? '' : '<div class="empty-note">No ground truth annotation exists yet for this reel.</div>'}
+      <table class="compare"><thead><tr><th>Ground Truth</th><th>LLM Predicted</th></tr></thead><tbody>${ingredientRows}</tbody></table>
+
+      <div class="btn-row" style="padding-top:16px;">
+        <button class="ghost" onclick="window.location.href='${API}/export-fact-sheet?experimentId=${s.experimentId}'">Download fact sheet CSV</button>
+      </div>
+    </div>
+  `;
+}
+
+// ===== Reel Analysis =====
+async function loadReels(){
+  try{
+    const reels = await fetch(API+'/reels').then(r=>r.json());
+    document.getElementById('reel-count').textContent = `(${reels.length} reels)`;
+    document.getElementById('reel-tbody').innerHTML = reels.map(r => `
+      <tr>
+        <td>${r.reelIdInstagram || ('#'+r.reelId)}</td>
+        <td>${r.influencerName} <span style="color:var(--ink-soft);">@${r.instagramAccount}</span></td>
+        <td>${r.durationSeconds ? r.durationSeconds+'s' : 'N/A'}</td>
+        <td>${r.languageTag}</td>
+        <td>${r.transcriptStatus}</td>
+        <td><span class="badge ${r.hasGroundTruth?'yes':'no'}">${r.hasGroundTruth?'yes':'no'}</span></td>
+        <td>${r.transcriptId ? `<span class="view-link" onclick="openReelDetail(${r.transcriptId})">view detail →</span>` : ''}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="7" class="empty-note">No reels found.</td></tr>';
+  }catch(err){
+    document.getElementById('reel-tbody').innerHTML = `<tr><td colspan="7" class="empty-note">Error loading reels: ${err.message}</td></tr>`;
+  }
+}
+
+function highlightCodeSwitch(text){
+  const malayMarkers = ['dan','dengan','yang','ke','di','sikit','sudu','cawan','garam','gula','minyak','goreng','masak','bawang','cili','santan','tepung','telur','susu'];
+  const escaped = text.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  const re = new RegExp('\\\\b('+malayMarkers.join('|')+')\\\\b', 'gi');
+  return escaped.replace(re, m => `<span class="my-word">${m}</span>`);
+}
+
+async function openReelDetail(transcriptId){
+  try{
+    const detail = await fetch(`${API}/reel-detail?transcriptId=${transcriptId}`).then(r=>r.json());
+    const techniques = [...new Set((detail.matrix||[]).map(m=>m.techniqueName))];
+    const models = [...new Set((detail.matrix||[]).map(m=>m.modelName))];
+
+    let matrixHtml = '<table class="grid" style="width:100%;"><thead><tr><th class="tcol" style="text-align:left;">Model</th>';
+    techniques.forEach(t=> matrixHtml += `<th>${t}</th>`);
+    matrixHtml += '</tr></thead><tbody>';
+    models.forEach(m=>{
+      matrixHtml += `<tr><td class="tcol">${m}</td>`;
+      techniques.forEach(t=>{
+        const cell = (detail.matrix||[]).find(c=>c.modelName===m && c.techniqueName===t);
+        const status = cell ? cell.status : 'not_run';
+        const expId = cell ? cell.experimentId : null;
+        const clickable = status==='completed' ? `onclick="closeReelOverlay();openSheet(${expId})"` : '';
+        matrixHtml += `<td class="c-${status}" ${clickable}>${status.replace('_',' ')}</td>`;
+      });
+      matrixHtml += '</tr>';
+    });
+    matrixHtml += '</tbody></table>';
+
+    document.getElementById('reel-detail-content').innerHTML = `
+      <button class="close-btn" onclick="closeReelOverlay()">×</button>
+      <div class="label-head">
+        <div class="kicker">Reel Analysis — Transcript #${transcriptId}</div>
+        <h2>Transcript Preview</h2>
+        <div class="meta">Malay marker words highlighted in <span class="my-word">amber</span></div>
+      </div>
+      <div class="label-body">
+        <div class="transcript-preview">${detail.transcriptText ? highlightCodeSwitch(detail.transcriptText) : '<span class="empty-note">Transcript file not readable.</span>'}</div>
+        <div class="compare-title">Experiment Status — all models × techniques for this reel</div>
+        <div class="grid-wrap" style="max-height:260px;">${matrixHtml}</div>
+      </div>
+    `;
+    document.getElementById('overlay-reel').className = 'overlay show';
+  }catch(err){ showMsg('Error loading reel detail: '+err.message, 'err'); }
+}
+function closeReelOverlay(){ document.getElementById('overlay-reel').className = 'overlay'; }
+
+window.onload = loadReferenceData;
+</script>
+</body>
+</html>
